@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#EDF1F5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#10161D" media="(prefers-color-scheme: dark)">
+<title>Normish — the daily crowd-reading game</title>
+<link rel="icon" type="image/png" sizes="180x180" href="icon-180.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta property="og:title" content="Normish — guess what people privately answered">
+<meta property="og:description" content="Five questions a day. Answer honestly, guess the room, find out how well you really read people. Two minutes.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://normish.YOURSUBDOMAIN.workers.dev/icon-512.png">
+<meta name="twitter:card" content="summary">
+<link rel="manifest" href="manifest.json">
+<style>
+  /* Self-hosted Archivo (SIL Open Font License) — no runtime call to Google, works
+     offline, and keeps the "no tracking" promise honest. License: fonts/OFL.txt */
+  @font-face{font-family:'Archivo';font-style:normal;font-weight:500 700;
+    font-display:swap;src:url('fonts/archivo-latin.woff2') format('woff2');}
+  @font-face{font-family:'Archivo Black';font-style:normal;font-weight:400;
+    font-display:swap;src:url('fonts/archivo-black-latin.woff2') format('woff2');}
+  :root{
+    --paper:#EDF1F5; --ink:#182635; --ink-soft:#54657A;
+    --you:#E8A13D; --you-deep:#A96F15;
+    --crowd:#177E89; --crowd-deep:#0E5560;
+    --bench:#7A5CC0; --bench-deep:#523C88;
+    --card:#FFFFFF; --line:#C9D3DD; --hit:#1E9E6A; --miss:#C7503F;
+    --head-bg:#182635; --head-fg:#F2F6FA; --head-soft:#B9C6D2;
+    --bench-bg:#F3EFFB; --crowd-bg:#E4F3F1; --you-bg:#FCF4E6;
+    --grid:rgba(23,126,137,.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --paper:#10161D; --ink:#E8EEF4; --ink-soft:#9AA8B6;
+      --you:#F0B056; --you-deep:#F3C67E;
+      --crowd:#3BA8B4; --crowd-deep:#8FD8DF;
+      --bench:#9B7FE0; --bench-deep:#C5B2F0;
+      --card:#1A232E; --line:#2E3B49;
+      --head-bg:#0C1218; --head-fg:#F2F6FA; --head-soft:#9AA8B6;
+      --bench-bg:#241E33; --crowd-bg:#122A2C; --you-bg:#2C2415;
+      --grid:rgba(59,168,180,.05);
+    }
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  button{touch-action:manipulation;-webkit-user-select:none;user-select:none;}
+  body{background:var(--paper);
+    background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:28px 28px;color:var(--ink);
+    font-family:'Archivo',system-ui,-apple-system,sans-serif;display:flex;justify-content:center;min-height:100vh;}
+  .app{width:100%;max-width:430px;display:flex;flex-direction:column;
+    padding:max(20px, env(safe-area-inset-top)) 18px max(40px, env(safe-area-inset-bottom));}
+  header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;}
+  .brand{font-family:'Archivo Black',sans-serif;font-size:1.35rem;letter-spacing:-.02em;}
+  .brand .accent{color:var(--crowd);}
+  .hdr-right{display:flex;align-items:baseline;gap:10px;}
+  .streak-chip{font-size:.78rem;font-weight:700;color:var(--you-deep);}
+  .puzzle-no{font-size:.8rem;color:var(--ink-soft);font-weight:700;}
+  .tagline{font-size:.85rem;color:var(--ink-soft);margin-bottom:16px;}
+  .mode-chip{display:none;font-size:.7rem;font-weight:700;color:var(--bench-deep);background:var(--bench-bg);border-radius:6px;padding:2px 8px;margin-left:6px;vertical-align:middle;}
+  .mode-chip.show{display:inline-block;}
+  .screen{display:none;flex-direction:column;flex:1;}
+  .screen.active{display:flex;}
+  .card{background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:22px 20px;box-shadow:0 2px 0 var(--line);}
+  .card.headline{background:var(--head-bg);color:var(--head-fg);border-color:var(--head-bg);}
+  .card.headline .q-text{color:#fff;}
+  .card.headline .phase-label.you-phase{color:#E8A13D;}
+  .card.headline .phase-label.crowd-phase{color:#7FD1DB;}
+  .card.headline .pct-sub{color:var(--head-soft);}
+  .card.headline .honesty{color:var(--head-soft);}
+  .intro-hero{font-family:'Archivo Black',sans-serif;font-size:1.85rem;line-height:1.12;margin:18px 0 12px;}
+  .intro-hero em{font-style:normal;color:var(--crowd);}
+  .intro-copy{color:var(--ink-soft);line-height:1.5;margin-bottom:16px;font-size:.94rem;}
+  details.howkey{margin:0 0 16px;}
+  details.howkey summary{font-size:.82rem;font-weight:700;color:var(--bench-deep);cursor:pointer;list-style:none;}
+  details.howkey summary::before{content:"▸ ";}
+  details.howkey[open] summary::before{content:"▾ ";}
+  .source-mode{border:1.5px solid var(--bench);background:var(--bench-bg);border-radius:10px;padding:11px 13px;font-size:.82rem;line-height:1.5;color:var(--bench-deep);margin-top:8px;}
+  .locale{font-size:.78rem;color:var(--ink-soft);margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .locale select{font-family:'Archivo';font-weight:700;border:1.5px solid var(--line);border-radius:8px;padding:5px 8px;background:var(--card);color:var(--ink);font-size:.8rem;}
+  button.primary{font-family:'Archivo';font-weight:700;font-size:1.05rem;background:var(--head-bg);color:#fff;border:none;border-radius:12px;padding:16px;width:100%;cursor:pointer;}
+  button.primary:disabled{opacity:.45;cursor:default;}
+  .card.headline button.primary{background:#E8A13D;color:#182635;}
+  button.primary:active:not(:disabled){transform:translateY(1px);}
+  .progress{display:flex;gap:6px;margin-bottom:14px;align-items:center;}
+  .pip{flex:1;height:5px;border-radius:3px;background:var(--line);}
+  .pip.head{height:9px;} .pip.done{background:var(--crowd);} .pip.now{background:var(--you);}
+  .round-tag{font-size:.72rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px;}
+  .round-tag.main{color:var(--you-deep);}
+  .keysource{font-size:.72rem;font-weight:700;letter-spacing:.03em;margin-bottom:10px;padding:4px 9px;border-radius:6px;display:inline-block;line-height:1.35;}
+  .keysource.bench{background:var(--bench-bg);color:var(--bench-deep);}
+  .keysource.live{background:var(--crowd-bg);color:var(--crowd-deep);}
+  .keysource.gap{background:var(--you-bg);color:var(--you-deep);}
+  .card.headline .keysource.bench{background:rgba(122,92,192,.3);color:#D9CCF5;}
+  .card.headline .keysource.live{background:rgba(23,126,137,.35);color:#9EDDE3;}
+  .card.headline .keysource.gap{background:rgba(232,161,61,.25);color:#F3D6A8;}
+  .phase-label{font-size:.74rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px;}
+  .phase-label.you-phase{color:var(--you-deep);} .phase-label.crowd-phase{color:var(--crowd-deep);}
+  .q-text{font-family:'Archivo Black',sans-serif;font-size:1.28rem;line-height:1.25;margin-bottom:18px;}
+  .yn{display:flex;gap:10px;}
+  .yn button{flex:1;font-family:'Archivo';font-weight:700;font-size:1.05rem;padding:16px;border-radius:12px;border:2px solid var(--ink);background:var(--card);color:var(--ink);cursor:pointer;}
+  .yn button:active{background:var(--ink);color:var(--card);}
+  .card.headline .yn button{border-color:#F2F6FA;background:transparent;color:#F2F6FA;}
+  .card.headline .yn button:active{background:#F2F6FA;color:#182635;}
+  .honesty{font-size:.74rem;color:var(--ink-soft);margin-top:12px;text-align:center;line-height:1.4;}
+  .big-pct{font-family:'Archivo Black',sans-serif;font-size:3.2rem;text-align:center;color:var(--you-deep);line-height:1;margin-bottom:4px;min-height:1em;}
+  .big-pct.untouched{font-size:1.15rem;color:var(--ink-soft);padding:14px 0;}
+  .card.headline .big-pct{color:#E8A13D;}
+  .card.headline .big-pct.untouched{color:var(--head-soft);}
+  .pct-sub{text-align:center;color:var(--ink-soft);font-size:.84rem;margin-bottom:14px;}
+  input[type=range]{width:100%;appearance:none;-webkit-appearance:none;height:10px;border-radius:5px;background:var(--line);outline:none;margin-bottom:20px;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:34px;height:34px;border-radius:50%;background:var(--you);border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3);cursor:pointer;}
+  input[type=range]::-moz-range-thumb{width:30px;height:30px;border-radius:50%;background:var(--you);border:3px solid #fff;cursor:pointer;}
+  .conf-label{font-size:.74rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:8px;text-align:center;}
+  .card.headline .conf-label{color:var(--head-soft);}
+  .conf-row{display:flex;gap:8px;margin-bottom:18px;}
+  .conf-row button{flex:1;font-family:'Archivo';font-weight:700;border:2px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:10px 6px;cursor:pointer;font-size:.84rem;line-height:1.25;}
+  .conf-row button .sub{display:block;font-size:.7rem;font-weight:500;color:var(--ink-soft);margin-top:3px;}
+  .conf-row button.on{border-color:var(--you);background:var(--you-bg);}
+  .card.headline .conf-row button{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.25);color:#F2F6FA;}
+  .card.headline .conf-row button .sub{color:var(--head-soft);}
+  .card.headline .conf-row button.on{border-color:#E8A13D;background:rgba(232,161,61,.2);}
+  .axis{position:relative;height:150px;margin:26px 0 6px;}
+  .axis .rail{position:absolute;top:88px;left:0;right:0;height:8px;border-radius:4px;background:var(--line);}
+  .band-vis{position:absolute;top:84px;height:16px;border-radius:8px;background:rgba(232,161,61,.28);border:1.5px solid var(--you);opacity:0;transition:opacity .4s;}
+  .band-vis.show{opacity:1;}
+  .marker{position:absolute;width:2px;}
+  .marker .flag{position:absolute;left:50%;transform:translateX(-50%);font-size:.7rem;font-weight:700;white-space:nowrap;padding:3px 7px;border-radius:6px;color:#fff;}
+  .marker.you-m{background:var(--you);top:68px;height:48px;}
+  .marker.you-m .flag{background:#A96F15;top:-24px;}
+  .marker.bench-m{background:var(--bench);top:74px;height:42px;opacity:0;transition:opacity .6s .4s;}
+  .marker.bench-m .flag{background:#523C88;top:-44px;}
+  .marker.key-m{background:var(--crowd);top:68px;height:48px;transition:left 1.1s cubic-bezier(.2,.8,.2,1);}
+  .marker.key-m .flag{background:#0E5560;bottom:-28px;top:auto;}
+  .marker.bench-m.show{opacity:1;}
+  .fade-in{opacity:0;transition:opacity .5s;}
+  .fade-in.show{opacity:1;}
+  .verdict{font-family:'Archivo Black',sans-serif;font-size:1.28rem;text-align:center;margin:16px 0 4px;}
+  .verdict .emo{font-size:1.5rem;}
+  .verdict-sub{text-align:center;color:var(--ink-soft);font-size:.85rem;margin-bottom:8px;line-height:1.45;}
+  .bench-cite{text-align:center;font-size:.74rem;color:var(--bench-deep);background:var(--bench-bg);border-radius:8px;padding:8px 10px;margin-bottom:10px;line-height:1.45;}
+  .rarity{text-align:center;font-size:.84rem;color:var(--you-deep);font-weight:700;margin-bottom:8px;min-height:1.1em;}
+  .pts{text-align:center;font-weight:700;color:var(--crowd-deep);margin-bottom:16px;font-size:1.05rem;min-height:1.3em;}
+  .pts .mult{font-size:.78rem;color:var(--ink-soft);font-weight:500;}
+  .score-hero{font-family:'Archivo Black',sans-serif;font-size:3rem;text-align:center;color:var(--crowd-deep);line-height:1;margin:8px 0 2px;}
+  .score-cap{text-align:center;color:var(--ink-soft);font-size:.85rem;margin-bottom:6px;}
+  .streak-line{text-align:center;font-size:.9rem;font-weight:700;color:var(--you-deep);margin-bottom:12px;}
+  .emoji-row{text-align:center;font-size:1.55rem;letter-spacing:.15em;margin-bottom:14px;}
+  .pctile{background:var(--crowd);color:#fff;border-radius:10px;padding:11px;text-align:center;font-weight:700;margin-bottom:4px;font-size:.92rem;}
+  .pctile-note{text-align:center;font-size:.72rem;color:var(--ink-soft);margin-bottom:12px;}
+  .profile{border:1.5px solid var(--crowd);background:var(--crowd-bg);border-radius:10px;padding:12px 14px;font-size:.88rem;line-height:1.45;margin-bottom:14px;color:var(--crowd-deep);}
+  .profile b{color:var(--ink);}
+  .profile .meter{height:8px;border-radius:4px;background:var(--card);margin:8px 0 4px;position:relative;overflow:hidden;}
+  .profile .fill{position:absolute;top:0;bottom:0;background:var(--crowd);}
+  .profile .mid{position:absolute;top:0;bottom:0;width:2px;left:50%;background:var(--crowd-deep);}
+  .meter-caps{display:flex;justify-content:space-between;font-size:.7rem;color:var(--ink-soft);}
+  .insight{border-left:4px solid var(--you);background:var(--you-bg);border-radius:0 10px 10px 0;padding:11px 14px;font-size:.89rem;line-height:1.45;margin-bottom:14px;}
+  .insight b{color:var(--you-deep);}
+  .countdown{text-align:center;font-size:.85rem;color:var(--ink-soft);margin-bottom:16px;}
+  .countdown b{color:var(--ink);font-variant-numeric:tabular-nums;}
+  .share-label{font-size:.74rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:8px;}
+  .share-preview{font-family:ui-monospace,Menlo,monospace;font-size:.78rem;background:var(--head-bg);color:#E7EEF4;border-radius:10px;padding:14px;white-space:pre-wrap;margin-bottom:14px;line-height:1.55;}
+  .copied{color:var(--hit);font-weight:700;text-align:center;margin-top:10px;min-height:1.2em;font-size:.9rem;}
+  .footer-note{margin-top:auto;padding-top:18px;font-size:.74rem;color:var(--ink-soft);text-align:center;line-height:1.55;}
+  .linklike{background:none;border:none;color:var(--ink-soft);font-size:.74rem;text-decoration:underline;cursor:pointer;font-family:'Archivo';}
+  .settings{margin-top:10px;border:1.5px solid var(--line);border-radius:10px;padding:12px;text-align:left;background:var(--card);}
+  .settings p{margin-bottom:8px;}
+  .settings .danger{color:var(--miss);font-weight:700;background:none;border:1.5px solid var(--miss);border-radius:8px;padding:8px 12px;cursor:pointer;font-family:'Archivo';font-size:.8rem;width:100%;}
+  /* Normish Plus */
+  .pw-badge{font-family:'Archivo Black',sans-serif;font-size:1.05rem;letter-spacing:.02em;text-align:center;margin-bottom:14px;color:var(--ink);}
+  .pw-badge span{color:var(--you-deep);}
+  .pw-hero{font-family:'Archivo Black',sans-serif;font-size:1.5rem;line-height:1.15;text-align:center;margin-bottom:18px;}
+  .pw-list{list-style:none;margin:0 0 18px;padding:0;}
+  .pw-list li{position:relative;padding:10px 0 10px 26px;font-size:.9rem;line-height:1.45;color:var(--ink-soft);border-top:1px solid var(--line);}
+  .pw-list li:before{content:"✦";position:absolute;left:2px;top:10px;color:var(--you);}
+  .pw-list li b{color:var(--ink);}
+  .pw-priceline{text-align:center;font-weight:700;font-size:1rem;margin-bottom:14px;color:var(--crowd-deep);}
+  .pw-price{color:var(--you-deep);}
+  .pw-restore{display:block;text-align:center;margin:12px auto 0;}
+  .pw-legal{text-align:center;font-size:.74rem;color:var(--ink-soft);margin-top:14px;line-height:1.5;}
+  .pw-legal a{color:var(--crowd-deep);}
+  .streak-risk{text-align:center;font-size:.88rem;font-weight:700;color:var(--you-deep);margin:0 0 12px;min-height:0;}
+  .pw-yours{border:1.5px solid var(--crowd);background:var(--crowd-bg);border-radius:10px;padding:11px 14px;font-size:.86rem;line-height:1.45;color:var(--crowd-deep);margin-bottom:14px;text-align:center;}
+  .pw-yours b{color:var(--ink);}
+  .best-line{text-align:center;font-size:.84rem;font-weight:700;color:var(--crowd-deep);margin-bottom:6px;min-height:0;}
+  .plus-cta{margin-top:16px;}
+  .plus-cta button{width:100%;font-family:'Archivo';font-weight:700;font-size:.92rem;border:2px solid var(--you);background:var(--you-bg);color:var(--you-deep);border-radius:12px;padding:14px;cursor:pointer;}
+  .plus-actions{margin-bottom:16px;}
+  .plus-sub{text-align:center;font-size:.78rem;color:var(--ink-soft);margin-top:8px;}
+  .plus-block{border:1.5px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:14px;font-size:.88rem;line-height:1.5;}
+  .plus-block h4{font-family:'Archivo Black',sans-serif;font-size:.82rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:10px;}
+  .hist-row{display:flex;align-items:center;gap:10px;padding:5px 0;border-top:1px solid var(--line);font-size:.82rem;}
+  .hist-row:first-of-type{border-top:none;}
+  .hist-row .hd{color:var(--ink-soft);width:52px;}
+  .hist-row .he{flex:1;letter-spacing:.06em;}
+  .hist-row .hs{font-weight:700;color:var(--crowd-deep);}
+  .trend{display:flex;align-items:flex-end;gap:3px;height:44px;margin:6px 0 2px;}
+  .trend .bar{flex:1;background:var(--crowd);border-radius:2px 2px 0 0;min-height:3px;opacity:.85;}
+  @media (prefers-reduced-motion: reduce){
+    .marker.key-m{transition:none;} .marker.bench-m,.band-vis,.fade-in{transition:none;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div>
+      <div class="brand">NORM<span class="accent">ISH</span></div>
+    </div>
+    <div class="hdr-right">
+      <span class="streak-chip" id="streakChip"></span>
+      <span class="puzzle-no" id="puzzleNo"></span>
+    </div>
+  </header>
+  <div class="tagline">Guess what today's players privately answered.<span class="mode-chip" id="modeChip">offline · scored vs. surveys</span></div>
+
+  <!-- INTRO -->
+  <section class="screen active" id="s-intro">
+    <div class="intro-hero">Find out when your model of the room is <em>wrong.</em></div>
+    <p class="intro-copy">Five quick questions. Answer each one honestly, then guess what percent of everyone said <b>yes</b> — and how sure you are. Two minutes.</p>
+    <details class="howkey">
+      <summary>How the answer key works</summary>
+      <div class="source-mode">
+        Each question is scored against a real public survey (source, year, and sample size shown) until <b id="cutoffN">400</b> Normish players have answered it — then it switches to the live room. The tag on each question tells you which is in play.
+        <div class="locale">
+          Your region:
+          <select id="regionSel" aria-label="Your region">
+            <option value="us">United States</option>
+            <option value="other">Elsewhere</option>
+          </select>
+          <span id="localeNote"></span>
+        </div>
+      </div>
+    </details>
+    <div class="streak-risk" id="streakRisk"></div>
+    <button class="primary" id="playBtn" onclick="startGame()">Play today's room</button>
+    <div class="plus-cta" id="introPlusCta"></div>
+  </section>
+
+  <!-- QUESTION -->
+  <section class="screen" id="s-question">
+    <div class="progress" id="progress" role="progressbar" aria-label="Question progress" aria-valuemin="1" aria-valuemax="5"></div>
+    <div class="card" id="qCard">
+      <div class="round-tag" id="roundTag"></div>
+      <div class="keysource" id="keySrcTag"></div>
+      <div class="phase-label you-phase" id="phaseLabel"></div>
+      <div class="q-text" id="qText"></div>
+      <div class="yn" id="ynButtons"></div>
+      <div class="honesty" id="honestyNote"></div>
+      <div id="predictBlock" style="display:none;">
+        <div class="big-pct untouched" id="bigPct">slide to guess</div>
+        <div class="pct-sub" id="predictSub"></div>
+        <input type="range" min="1" max="99" value="50" id="pctSlider" aria-label="Your guess" oninput="onSlide(this.value)">
+        <div class="conf-label">How sure are you?</div>
+        <div class="conf-row" id="confRow">
+          <button data-c="sharp" onclick="pickConf('sharp')">Sharp<span class="sub" id="subSharp"></span></button>
+          <button data-c="steady" class="on" onclick="pickConf('steady')">Steady<span class="sub" id="subSteady"></span></button>
+          <button data-c="hedge" onclick="pickConf('hedge')">Hedge<span class="sub" id="subHedge"></span></button>
+        </div>
+        <button class="primary" id="lockBtn" onclick="lockPrediction()" disabled>Slide to guess first</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- REVEAL -->
+  <section class="screen" id="s-reveal">
+    <div class="progress" id="progress2"></div>
+    <div class="card">
+      <div class="round-tag" id="roundTag2"></div>
+      <div class="q-text" id="rqText" style="font-size:1.02rem;"></div>
+      <div class="axis" id="axis">
+        <div class="rail"></div>
+        <div class="band-vis" id="bandVis"></div>
+        <div class="marker you-m" id="youMarker"><span class="flag" id="youFlag"></span></div>
+        <div class="marker bench-m" id="benchMarker"><span class="flag" id="benchFlag"></span></div>
+        <div class="marker key-m" id="keyMarker"><span class="flag" id="keyFlag"></span></div>
+      </div>
+      <div class="verdict fade-in" id="verdict"></div>
+      <div class="verdict-sub fade-in" id="verdictSub"></div>
+      <div class="bench-cite fade-in" id="benchCite"></div>
+      <div class="rarity fade-in" id="rarityLine"></div>
+      <div class="pts" id="ptsLine"></div>
+      <button class="primary" id="nextBtn" onclick="nextQuestion()">Next read</button>
+    </div>
+  </section>
+
+  <!-- SUMMARY -->
+  <section class="screen" id="s-summary">
+    <div class="card">
+      <div class="score-hero" id="finalScore"></div>
+      <div class="score-cap">Today's Read · out of 750</div>
+      <div class="best-line" id="bestLine"></div>
+      <div class="streak-line" id="streakLine"></div>
+      <div class="emoji-row" id="emojiRow"></div>
+      <div class="pctile" id="pctileLine"></div>
+      <div class="pctile-note" id="pctileNote"></div>
+      <div class="profile" id="profileBox"></div>
+      <div class="insight" id="insightBox"></div>
+      <div class="countdown">Next room in <b id="countdown">—</b></div>
+      <div class="share-label">Challenge a friend (the question travels, your score hides)</div>
+      <div class="share-preview" id="sharePreview"></div>
+      <button class="primary" onclick="shareChallenge()">Share the challenge</button>
+      <div class="copied" id="copiedMsg"></div>
+      <div class="plus-cta" id="summaryPlusCta"></div>
+    </div>
+  </section>
+
+  <!-- PAYWALL -->
+  <section class="screen" id="s-paywall">
+    <div class="card">
+      <div class="pw-badge">NORMISH <span>PLUS</span></div>
+      <div class="pw-hero">Today's room is over.<br>Plus keeps you playing.</div>
+      <ul class="pw-list">
+        <li><b>Practice rooms</b> — unlimited extra rooms any time, drawn from the whole question bank. Play as much as you want.</li>
+        <li><b>Your full history</b> — every past score and your calibration trend over time, not just today.</li>
+        <li><b>Deep stats</b> — how you read yes/no questions vs. group-gap questions, your best call, your blind spot.</li>
+        <li><b>Streak repair</b> — bring a broken streak back to life once, so one missed day doesn't erase weeks.</li>
+      </ul>
+      <div class="pw-yours" id="pwYours" hidden></div>
+      <div class="pw-priceline">One-time · <span class="pw-price">$7.99</span> · yours forever</div>
+      <button class="primary" onclick="buyPlus()">Unlock Normish Plus</button>
+      <button class="linklike pw-restore" onclick="restorePlus()">Restore purchase</button>
+      <div class="copied" id="pwNote"></div>
+      <div class="pw-legal">The daily game stays free, always. Plus is a one-time purchase, not a subscription.
+        <a href="#" onclick="show('s-intro');return false;">Back</a></div>
+    </div>
+  </section>
+
+  <!-- PLUS HUB -->
+  <section class="screen" id="s-plus">
+    <div class="card">
+      <div class="pw-badge">NORMISH <span>PLUS</span></div>
+      <div class="plus-actions">
+        <button class="primary" onclick="startPractice()">Play a practice room</button>
+        <div class="plus-sub" id="practiceSub"></div>
+      </div>
+      <div class="plus-block" id="plusStats"></div>
+      <div class="plus-block" id="plusHistory"></div>
+      <div class="reset"><button class="linklike" onclick="show('s-intro')">Back to today</button></div>
+    </div>
+  </section>
+
+  <div class="footer-note">
+    <span id="dataNote">Benchmark figures are real, published surveys — cited on every reveal. Your answers are stored anonymously and only as counts. Your bias profile lives on this device.</span><br>
+    <button class="linklike" onclick="toggleSettings()">About &amp; settings</button>
+    <div class="settings" id="settingsPanel" hidden>
+      <p><b>Normish</b> v<span id="verLine">1.0.0</span> · a daily game about how well you read other people.</p>
+      <p id="privacyRow">No accounts. No ads. No tracking. Answers feed an anonymous count that becomes the answer key.</p>
+      <button class="danger" onclick="resetProfile()">Erase profile, streak &amp; today's play (this device)</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+// ================= config =================
+const CFG = {
+  API_BASE: "",            // set to your worker URL (e.g. https://normish.YOURNAME.workers.dev) for the iOS bundle; empty = same-origin when web-hosted, offline when file://
+  SHARE_URL: "",           // set after deploy; empty = share text omits the link
+  CUTOFF: 400,
+  VERSION: "1.0.0"
+};
+document.getElementById('cutoffN').textContent = CFG.CUTOFF;
+document.getElementById('verLine').textContent = CFG.VERSION;
+
+const isHttp = location.protocol === 'http:' || location.protocol === 'https:';
+const apiBase = CFG.API_BASE || (isHttp ? '' : null);   // null → offline forced
+
+// ================= native bridge =================
+function haptic(style){ try{ if(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.haptic) window.webkit.messageHandlers.haptic.postMessage(style); }catch(e){} }
+function nativeShare(text){ try{ if(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.share){ window.webkit.messageHandlers.share.postMessage(text); return true; } }catch(e){} return false; }
+function iapBridge(action){ try{ if(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.iap){ window.webkit.messageHandlers.iap.postMessage(action); return true; } }catch(e){} return false; }
+const hasNativeIAP = !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.iap);
+
+// ================= Normish Plus (lifetime IAP: normish_plus_lifetime) =================
+// Entitlement is owned by the native layer (StoreKit 2). The web layer asks for status
+// and calls purchase/restore through the bridge; native calls window.normishSetPlus back.
+const PLUSKEY='normish_plus_v1';
+let isPlus = false;
+try{ isPlus = localStorage.getItem(PLUSKEY)==='1'; }catch(e){}
+// native pushes entitlement changes here (RevenueCat customerInfo -> entitlements.active.plus)
+window.normishSetPlus = function(active){
+  isPlus = !!active;
+  try{ localStorage.setItem(PLUSKEY, isPlus?'1':'0'); }catch(e){}
+  pwBusy(false);
+  refreshPlusUI();
+};
+window.normishIAPStatus = function(json){ // native may pass {price:"$7.99"} for display
+  try{ const o=typeof json==='string'?JSON.parse(json):json; if(o&&o.price){ document.querySelectorAll('.pw-price').forEach(el=>el.textContent=o.price); } }catch(e){}
+  pwBusy(false);
+};
+// Native reports the outcome of every purchase/restore attempt, so a tap is never a dead end.
+const PW_MSG = {
+  unavailable:     "Purchases aren't available right now. Please check your connection and try again later.",
+  cancelled:       "Purchase cancelled.",
+  pending:         "Waiting for approval — Plus unlocks automatically once it's approved.",
+  failed:          "That didn't go through. No charge was made — please try again.",
+  restored:        "Purchase restored. Welcome back to Plus!",
+  nothingToRestore:"No previous purchase found on this Apple Account."
+};
+window.normishIAPEvent = function(event){
+  pwBusy(false);
+  const note = document.getElementById('pwNote');
+  if(note) note.textContent = PW_MSG[event] || "";
+};
+// Disable the buttons while a purchase is in flight so it's clear the tap registered.
+function pwBusy(busy){
+  const buy = document.querySelector('#s-paywall .primary');
+  const res = document.querySelector('#s-paywall .pw-restore');
+  [buy,res].forEach(b=>{ if(b) b.disabled = !!busy; });
+  if(buy) buy.textContent = busy ? "Contacting App Store…" : "Unlock Normish Plus";
+}
+function requestPlusStatus(){ if(hasNativeIAP) iapBridge('status'); }
+function buyPlus(){
+  if(hasNativeIAP){
+    document.getElementById('pwNote').textContent = "";
+    pwBusy(true);
+    if(!iapBridge('purchase')) pwBusy(false);
+    return;
+  }
+  // web/offline: purchase only exists in the iOS app
+  document.getElementById('pwNote').textContent = "Normish Plus is available in the iOS app.";
+}
+function restorePlus(){
+  if(hasNativeIAP){
+    document.getElementById('pwNote').textContent = "";
+    pwBusy(true);
+    if(!iapBridge('restore')) pwBusy(false);
+    return;
+  }
+  document.getElementById('pwNote').textContent = "Restore is available in the iOS app.";
+}
+
+// ================= offline question bank (all citations vetted) =================
+const BANK = [
+  {id:"q1", type:'yesno', q:"Do you believe in ghosts?", benchYes:41,
+   cite:"YouGov, 2021 — 41% of U.S. adults believe in ghosts (20% unsure).", liveN:0, liveYes:null},
+  {id:"q2", type:'yesno', q:"Do you make your bed almost every morning?", benchYes:56,
+   cite:"YouGov Omnibus, 2018 — 37% \"always\" + 19% \"often\" = 56% at least often, n≈1,000.", liveN:0, liveYes:null},
+  {id:"q3", type:'yesno', q:"Have you ever seen or felt the presence of a ghost?", benchYes:24,
+   cite:"Ipsos, 2021 — 24% of Americans have seen or felt a ghost's presence.", liveN:0, liveYes:null},
+  {id:"q4", type:'yesno', q:"Would you ideally like 8+ hours of sleep a night?", benchYes:69,
+   cite:"YouGov Surveys, Dec 2023 — 69% want 8+ hours ideally, n=1,505.", liveN:0, liveYes:null},
+  {id:"q5", type:'yesno', q:"Do you consult astrology or a horoscope at least yearly?", benchYes:28,
+   cite:"Pew Research Center, 2024 — 28% consult astrology/horoscope at least once a year.", liveN:0, liveYes:null},
+  {id:"q6", type:'yesno', q:"Are you a side sleeper?", benchYes:59,
+   cite:"YouGov, 2019 — 59% of Americans are side sleepers, n=1,288.", liveN:0, liveYes:null},
+  {id:"q7", type:'yesno', q:"Do you believe in reincarnation?", benchYes:24,
+   cite:"Gallup, May 2025 — ~24% believe in reincarnation; 50% do not, n=1,003.", liveN:0, liveYes:null},
+  {id:"q8", type:'gap', q:"Belief in ghosts: how many points higher for women than men?",
+   groupHi:"Women", groupLo:"Men", trueGap:9,
+   cite:"Ipsos, 2021 — women 41% vs men 32% believe in ghosts (9-point gap)."},
+  {id:"q9", type:'gap', q:"Astrology belief under 50: gap between women and men?",
+   groupHi:"Women <50", groupLo:"Men <50", trueGap:23,
+   cite:"Pew Research Center, 2024 — women under 50 43% vs men under 50 20% (23-point gap)."},
+  {id:"q10", type:'gap', q:"Making the bed at least sometimes: gap between 55+ and 25–34?",
+   groupHi:"Age 55+", groupLo:"Age 25–34", trueGap:15,
+   cite:"YouGov Omnibus, 2018 — 81% of 55+ vs 66% of 25–34 (15-point gap)."},
+  // batch 2 — research-verified 2026-07-13 (audit trail: backend/sources.md)
+  {id:"q11", type:'yesno', q:"Do you believe intelligent life exists on other planets?", benchYes:65,
+   cite:"Pew Research Center, 2021 — 65% of U.S. adults say their best guess is that intelligent life exists on other planets, n=10,417.", liveN:0, liveYes:null},
+  {id:"q12", type:'yesno', q:"Do you believe in fate — that the course of your life is predetermined?", benchYes:44,
+   cite:"Pew Research Center, 2021 — 44% of U.S. adults say they believe in fate.", liveN:0, liveYes:null},
+  {id:"q13", type:'yesno', q:"Have you ever consulted a psychic or medium?", benchYes:22,
+   cite:"YouGov Omnibus, 2017 — 22% of U.S. adults have ever consulted a psychic or medium.", liveN:0, liveYes:null},
+  {id:"q14", type:'yesno', q:"Do you believe in psychic or spiritual healing?", benchYes:48,
+   cite:"Gallup, May 2025 — 48% of U.S. adults believe in psychic or spiritual healing, n=1,003.", liveN:0, liveYes:null},
+  {id:"q15", type:'yesno', q:"Do you think knocking on wood brings good luck?", benchYes:30,
+   cite:"YouGov, 2014 — 30% of Americans consider knocking on wood to be good luck.", liveN:0, liveYes:null},
+  {id:"q16", type:'yesno', q:"Do you ever carry or wear a lucky charm?", benchYes:24,
+   cite:"YouGov Omnibus, 2018 — 24% of Americans carry a lucky charm at least occasionally.", liveN:0, liveYes:null},
+  {id:"q17", type:'yesno', q:"Do you believe a wish made blowing out birthday candles brings good luck?", benchYes:28,
+   cite:"YouGov, 2022 — 28% believe a birthday-candle wish brings good luck, n=1,000.", liveN:0, liveYes:null},
+  {id:"q18", type:'gap', q:"Belief in alien intelligent life: gap between adults under 30 and 50+?",
+   groupHi:"Under 30", groupLo:"Age 50+", trueGap:19,
+   cite:"Pew Research Center, 2021 — 76% of adults under 30 vs 57% of those 50+ (19-point gap), n=10,417."},
+  {id:"q19", type:'gap', q:"Saying they've had a psychic experience: gap between women and men?",
+   groupHi:"Women", groupLo:"Men", trueGap:11,
+   cite:"YouGov Omnibus, 2017 — women 40% vs men 29% report a psychic occurrence (11-point gap)."},
+  {id:"q20", type:'yesno', q:"Have you ever cried while watching a movie in a theater?", benchYes:42,
+   cite:"YouGov, Mar 2025 — 42% of Americans have cried in a movie theater, n=1,161.", liveN:0, liveYes:null},
+  {id:"q21", type:'yesno', q:"Have you ever re-gifted a present?", benchYes:39,
+   cite:"Yahoo News/YouGov, 2025 — 39% of U.S. adults admit to having re-gifted, n=1,684.", liveN:0, liveYes:null},
+  {id:"q22", type:'yesno', q:"Have you ever pranked someone by knocking on their door and running away?", benchYes:35,
+   cite:"YouGov, May 2024 — 35% have ding-dong-ditched at some age, n=9,623.", liveN:0, liveYes:null},
+  {id:"q23", type:'yesno', q:"If a stranger knocked on your front door, would you answer it?", benchYes:48,
+   cite:"YouGov, May 2024 — 48% of Americans would answer a stranger at the door, n=9,640.", liveN:0, liveYes:null},
+  {id:"q24", type:'yesno', q:"Do you have a pet?", benchYes:58,
+   cite:"YouGov, May 2022 — 58% of Americans have a pet (40% a dog, 32% a cat), n=1,000.", liveN:0, liveYes:null},
+  {id:"q25", type:'yesno', q:"Do you keep your smartphone in your bedroom while you sleep?", benchYes:87,
+   cite:"American Academy of Sleep Medicine survey, 2023 — 87% keep their smartphone in the bedroom, n=2,005.", liveN:0, liveYes:null},
+  {id:"q26", type:'gap', q:"Having ever cried in their car: gap between women and men?",
+   groupHi:"Women", groupLo:"Men", trueGap:29,
+   cite:"YouGov, Mar 2025 — women 76% vs men 47% have cried in their car (29-point gap), n=1,161."},
+  {id:"q27", type:'gap', q:"Having ever cried at work: gap between women and men?",
+   groupHi:"Women", groupLo:"Men", trueGap:28,
+   cite:"YouGov, Mar 2025 — women 49% vs men 21% have cried at their workplace (28-point gap), n=1,161."},
+  {id:"q28", type:'yesno', q:"When your alarm goes off in the morning, do you ever hit snooze?", benchYes:64,
+   cite:"YouGov, Jun 2023 — 64% snooze at least rarely (11% always, 14% often, 19% sometimes, 20% rarely), n=12,907.", liveN:0, liveYes:null},
+  {id:"q29", type:'yesno', q:"Do you eat breakfast every single day?", benchYes:39,
+   cite:"YouGov, Apr 2021 — 39% of U.S. adults eat breakfast every day, n=11,924.", liveN:0, liveYes:null},
+  {id:"q30", type:'yesno', q:"Do you drink coffee every day?", benchYes:66,
+   cite:"National Coffee Association, 2025 — 66% of American adults drink coffee each day.", liveN:0, liveYes:null},
+  {id:"q31", type:'yesno', q:"Do you take a nap at least once a week?", benchYes:59,
+   cite:"YouGov, Nov 2023 — 59% nap at least weekly, n=12,086.", liveN:0, liveYes:null},
+  {id:"q32", type:'yesno', q:"Do you typically get 7 or more hours of sleep a night?", benchYes:52,
+   cite:"YouGov Surveys, Dec 2023 — 52% of Americans get 7+ hours a night, n=1,505.", liveN:0, liveYes:null},
+  {id:"q33", type:'yesno', q:"Do you usually watch TV while eating dinner?", benchYes:63,
+   cite:"YouGov, Jan 2025 — 63% of Americans watch TV during dinner, n=1,106.", liveN:0, liveYes:null},
+  {id:"q34", type:'yesno', q:"Do you generally eat dinner at the table?", benchYes:51,
+   cite:"YouGov, Jan 2025 — 51% generally eat dinner at the table, n=1,106.", liveN:0, liveYes:null},
+  {id:"q35", type:'gap', q:"Drank coffee in the past day: gap between adults 60+ and 18–24?",
+   groupHi:"Age 60+", groupLo:"Age 18–24", trueGap:26,
+   cite:"National Coffee Association, 2024 — 73% of 60+ vs 47% of 18–24 drank coffee in the past day (26-point gap)."},
+  {id:"q36", type:'gap', q:"Saying they rarely or never wake up well-rested: gap between women and men?",
+   groupHi:"Women", groupLo:"Men", trueGap:11,
+   cite:"YouGov, Mar 2024 — women 33% vs men 22% rarely/never feel well-rested (11-point gap), n=1,181."},
+  // batch 3 — money/tech/travel, research-verified 2026-07-14 (audit trail: backend/sources.md)
+  {id:"q37", type:'yesno', q:"Have you ever been on a cruise?", benchYes:31,
+   cite:"YouGov, 2019 — 31% of U.S. adults say they have been on a cruise before.", liveN:0, liveYes:null},
+  {id:"q38", type:'yesno', q:"Do you always check online reviews before buying something?", benchYes:34,
+   cite:"YouGov, 2017 — 34% of Americans always check reviews before purchasing.", liveN:0, liveYes:null},
+  {id:"q39", type:'yesno', q:"Do you keep a monthly budget?", benchYes:74,
+   cite:"NerdWallet / The Harris Poll, 2023 — 74% of Americans have a monthly budget, n=2,070.", liveN:0, liveYes:null},
+  {id:"q40", type:'yesno', q:"Do you use your phone within 10 minutes of waking up?", benchYes:44,
+   cite:"YouGov, 2025 — 44% always or often use their phone within 10 minutes of waking, n=1,148.", liveN:0, liveYes:null},
+  {id:"q41", type:'yesno', q:"Do you try to always have cash on hand?", benchYes:58,
+   cite:"Pew Research Center, 2022 — 58% try to make sure they always have cash on hand, n=6,034.", liveN:0, liveYes:null},
+  {id:"q42", type:'yesno', q:"Do you use a password manager?", benchYes:36,
+   cite:"Security.org, 2024 — 36% of U.S. adults currently use a password manager, n=1,000.", liveN:0, liveYes:null},
+  {id:"q43", type:'yesno', q:"Do you use your phone or another device while watching TV?", benchYes:76,
+   cite:"YouGov, 2026 — 76% at least sometimes use a device while watching TV at home, n=2,012.", liveN:0, liveYes:null},
+  {id:"q44", type:'gap', q:"Having a current U.S. passport: gap between adults under 30 and 45–64?",
+   groupHi:"Under 30", groupLo:"Age 45–64", trueGap:20,
+   cite:"YouGov, 2023 — passport ownership 53% (under 30) vs 33% (45–64) (20-point gap), n=1,000."},
+  {id:"q45", type:'gap', q:"Trying to always keep cash on hand: gap between adults 50+ and under 50?",
+   groupHi:"Age 50+", groupLo:"Under 50", trueGap:26,
+   cite:"Pew Research Center, 2022 — 71% of 50+ vs 45% of under 50 (26-point gap), n=6,034."},
+  // batch 4 — food opinions & holidays, research-verified 2026-07-14 (audit trail: backend/sources.md)
+  {id:"q46", type:'yesno', q:"Do you consider a hot dog a sandwich?", benchYes:40,
+   cite:"YouGov, 2025 — 40% of U.S. adults say a hot dog is a sandwich, n=1,126.", liveN:0, liveYes:null},
+  {id:"q47", type:'yesno', q:"Do you like pineapple on pizza?", benchYes:48,
+   cite:"YouGov, 2025 — 48% of U.S. adults like or love pineapple on pizza, n=1,126.", liveN:0, liveYes:null},
+  {id:"q48", type:'yesno', q:"Do you consider a hamburger a sandwich?", benchYes:73,
+   cite:"YouGov, 2025 — 73% of U.S. adults say a hamburger is a sandwich, n=1,126.", liveN:0, liveYes:null},
+  {id:"q49", type:'yesno', q:"Do you prefer a real Christmas tree over an artificial one?", benchYes:39,
+   cite:"YouGov, 2022 — 39% prefer a fresh tree vs 45% artificial, n=6,647.", liveN:0, liveYes:null},
+  {id:"q50", type:'yesno', q:"Do you like pumpkin pie?", benchYes:70,
+   cite:"YouGov, 2022 — 70% of U.S. adults love or like pumpkin pie, n=1,000.", liveN:0, liveYes:null},
+  {id:"q51", type:'gap', q:"Saying a hot dog is a sandwich: gap between adults 65+ and under 65?",
+   groupHi:"Age 65+", groupLo:"Under 65", trueGap:19,
+   cite:"YouGov, 2025 — 54% of 65+ vs 35% of under 65 (19-point gap), n=1,126."},
+  {id:"q52", type:'gap', q:"Tasting food before seasoning it: gap between women and men?",
+   groupHi:"Women", groupLo:"Men", trueGap:13,
+   cite:"YouGov, 2024 — women 67% vs men 54% always/usually taste first (13-point gap), n=1,139."},
+  {id:"q53", type:'gap', q:"Ordering steak well-done: gap between women and men?",
+   groupHi:"Women", groupLo:"Men", trueGap:9,
+   cite:"YouGov, 2019 — women 29% vs men 20% prefer well-done (9-point gap), n=1,295."},
+  // batch 5 — work/social/communication, research-verified 2026-07-14 (audit trail: backend/sources.md)
+  {id:"q54", type:'yesno', q:"Do you usually answer calls from unknown numbers?", benchYes:19,
+   cite:"Pew Research Center, 2020 — 19% of U.S. adults generally answer cellphone calls from unknown numbers, n=10,211.", liveN:0, liveYes:null},
+  {id:"q55", type:'yesno', q:"Has texting replaced at least some of the phone calls you used to make?", benchYes:68,
+   cite:"YouGov, 2026 — 68% say messaging has replaced at least some of their phone calls, n=2,442.", liveN:0, liveYes:null},
+  {id:"q56", type:'yesno', q:"Do you make voice phone calls multiple times a week?", benchYes:58,
+   cite:"YouGov, 2026 — 58% use voice calls on a regular basis (multiple times per week), n=2,442.", liveN:0, liveYes:null},
+  {id:"q57", type:'yesno', q:"Have you ever accidentally sent a sensitive message to the wrong person?", benchYes:39,
+   cite:"YouGov, 2025 — 39% have accidentally sent a sensitive message to the wrong person, n=4,500.", liveN:0, liveYes:null},
+  {id:"q58", type:'yesno', q:"Would you prefer to work fully remotely?", benchYes:36,
+   cite:"YouGov, 2023 — 36% of U.S. adults say they would want to work fully remotely, n=1,149.", liveN:0, liveYes:null},
+  {id:"q59", type:'gap', q:"Preferring to phone a business for service: gap between Baby Boomers and Gen Z?",
+   groupHi:"Baby Boomers", groupLo:"Gen Z", trueGap:27,
+   cite:"YouGov Profiles, 2025 — 52% of Baby Boomers vs 25% of Gen Z prefer calling a business (27-point gap)."},
+  {id:"q60", type:'gap', q:"Buying gifts for friends: gap between women and men?",
+   groupHi:"Women", groupLo:"Men", trueGap:14,
+   cite:"YouGov Profiles, 2025 — women 52% vs men 38% buy gifts for friends (14-point gap)."}
+];
+
+// ================= day + mode =================
+let MODE='local', dateStr, dayNum, todaysQs=[];
+function localDateStr(d){const p=n=>String(n).padStart(2,'0');return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate());}
+// anchored to local midnight so the puzzle number, date key and countdown all roll together
+// (round, not floor: DST days are ±1h). Online mode uses the server's UTC day instead.
+function localDayNum(){const n=new Date();const mid=new Date(n.getFullYear(),n.getMonth(),n.getDate());
+  return Math.max(1,Math.round((mid-new Date(2026,0,1))/86400000)+1);}
+function seeded(n){const x=Math.sin(dayNum*127.1+n*311.7)*43758.5453;return x-Math.floor(x);}
+
+function pickLocalQuestions(){
+  // mirror the server's ensureDay shape: a yes/no headline, exactly one gap item
+  // somewhere in positions 2-5, three more yes/no. (Offline fallback only.)
+  const yesIx=[], gapIx=[];
+  BANK.forEach((e,ix)=>{ (e.type==='gap'?gapIx:yesIx).push(ix); });
+  const draw=(pool,seedBase,n)=>{ const a=pool.slice(), out=[]; let k=0;
+    while(out.length<n && a.length){ const j=Math.floor(seeded(seedBase+k)*a.length)%a.length; out.push(a.splice(j,1)[0]); k++; } return out; };
+  if(yesIx.length<4 || gapIx.length<1){                 // tiny-bank safety net: old behavior
+    const qs=[], used=new Set(); let i=0;
+    const g=gapIx.length?gapIx[Math.floor(seeded(999)*gapIx.length)%gapIx.length]:null;
+    if(g!==null){used.add(g);qs.push(BANK[g]);}
+    while(qs.length<5){const idx=Math.floor(seeded(i)*BANK.length)%BANK.length;if(!used.has(idx)){used.add(idx);qs.push(BANK[idx]);}i++;}
+    const fy=qs.findIndex(e=>e.type==='yesno'); if(fy>0){const t=qs[0];qs[0]=qs[fy];qs[fy]=t;}
+    return qs;
+  }
+  const yes=draw(yesIx,0,4), gap=draw(gapIx,999,1)[0];
+  const gapPos=1+Math.floor(seeded(500)*4);             // 1..4 (never the headline)
+  const order=[yes[0]]; let yi=1;
+  for(let p=1;p<5;p++) order.push(p===gapPos?gap:yes[yi++]);
+  return order.map(ix=>BANK[ix]);
+}
+
+async function fetchJSON(path, opts, ms){
+  const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort(), ms||3000);
+  try{
+    const r=await fetch(apiBase+path, Object.assign({signal:ctl.signal}, opts||{}));
+    clearTimeout(t);
+    if(!r.ok) throw new Error('http '+r.status);
+    return await r.json();
+  }catch(e){ clearTimeout(t); throw e; }
+}
+
+async function boot(){
+  if(apiBase!==null){
+    try{
+      const d=await fetchJSON('/api/day');
+      if(d && d.ok && Array.isArray(d.questions) && d.questions.length===5){
+        MODE='online'; dateStr=d.date; dayNum=d.dayNumber; todaysQs=d.questions;
+      }
+    }catch(e){/* fall through to local */}
+  }
+  if(MODE!=='online'){
+    dateStr=localDateStr(new Date()); dayNum=localDayNum(); todaysQs=pickLocalQuestions();
+    document.getElementById('modeChip').classList.add('show');
+  }
+  document.getElementById('puzzleNo').textContent="#"+dayNum;
+  renderStreakChip();
+  const played=loadPlayed();
+  if(played){
+    document.getElementById('playBtn').textContent="See today's result";
+    document.getElementById('playBtn').onclick=function(){renderSummaryFromCache(played);};
+  }
+  requestPlusStatus();   // ask the native layer for entitlement (no-op in web)
+  refreshPlusUI();
+  renderStreakRisk();
+}
+
+// loss-aversion nudge: a streak that exists but hasn't been defended today is "on the line"
+function renderStreakRisk(){
+  const el=document.getElementById('streakRisk'); if(!el) return;
+  const s=loadStreak();
+  if(!s.count || s.last===dateStr){ el.textContent=""; return; }
+  if(s.last===yesterdayStr()){
+    el.textContent = s.count>=2
+      ? "🔥 Your "+s.count+"-day streak is on the line — play today to keep it."
+      : "🔥 Keep yesterday's streak alive — play today.";
+  } else {
+    el.textContent = "";
+  }
+}
+
+// ================= scoring =================
+const CONF={
+  sharp:{w:5, gw:3, name:'Sharp'},
+  steady:{w:12, gw:6, name:'Steady'},
+  hedge:{w:20, gw:10, name:'Hedge'}
+};
+document.getElementById('subSharp').textContent="±5 · up to 150";
+document.getElementById('subSteady').textContent="±12 · up to 100";
+document.getElementById('subHedge').textContent="±20 · up to 50";
+function setConfSubs(isGap){
+  document.getElementById('subSharp').textContent  = isGap? "±3 · up to 150" : "±5 · up to 150";
+  document.getElementById('subSteady').textContent = isGap? "±6 · up to 100" : "±12 · up to 100";
+  document.getElementById('subHedge').textContent  = isGap? "±10 · up to 50" : "±20 · up to 50";
+}
+function scoreTier(err, tier, isGap){
+  if(isGap){
+    if(tier==='sharp')  return err<=3 ?150 : err<=6 ?40 : 0;
+    if(tier==='steady') return err<=3 ?100 : err<=6 ?65 : err<=10?25 : 0;
+    return                     err<=6 ?50  : err<=12?35 : err<=18?15 : 5;
+  }
+  if(tier==='sharp')  return err<=5 ?150 : err<=10?40 : 0;
+  if(tier==='steady') return err<=5 ?100 : err<=12?65 : err<=20?25 : 0;
+  return                     err<=12?50  : err<=25?35 : err<=35?15 : 5;
+}
+function normErr(err,isGap){return isGap? err*2.5 : err;}
+function emojiFor(en){
+  if(en<=3) return "🎯";
+  if(en<=8) return "🔥";
+  if(en<=18) return "🌡️";
+  return "❄️";
+}
+function resolveKey(e){
+  if(e.type==='gap') return {mode:'gap', truth:e.trueGap, cite:e.cite};
+  const live = (e.liveYes!==null && e.liveYes!==undefined) && e.liveN>=CFG.CUTOFF;
+  return {mode:live?'live':'bench', truth:live?e.liveYes:e.benchYes, liveN:e.liveN||0, cite:e.cite};
+}
+
+// ================= persistence =================
+const PKEY='normish_profile_v1', DKEY='normish_device_v1', SKEY='normish_streak_v1';
+function lsGet(k){try{const r=localStorage.getItem(k);return r?JSON.parse(r):null;}catch(e){return null;}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+function loadProfile(){return lsGet(PKEY)||{n:0,sumSigned:0,totalPts:0,sessions:0,gapN:0,gapSumSigned:0};}
+let profile=loadProfile();
+function saveProfile(){lsSet(PKEY,profile);}
+function deviceId(){let d=lsGet(DKEY);if(!d){d=(crypto.randomUUID?crypto.randomUUID():String(Math.random()).slice(2)+Date.now());lsSet(DKEY,d);}return d;}
+function loadStreak(){return lsGet(SKEY)||{last:null,count:0};}
+function loadPlayed(){return lsGet('normish_play_'+dateStr);}
+function savePlayed(o){lsSet('normish_play_'+dateStr,o);}
+// history log (drives the Plus history/trend view). Kept small and local.
+const HKEY='normish_history_v1';
+function loadHistory(){return lsGet(HKEY)||[];}
+function pushHistory(entry){const h=loadHistory();if(h.length&&h[h.length-1].date===entry.date){h[h.length-1]=entry;}else{h.push(entry);}while(h.length>200)h.shift();lsSet(HKEY,h);}
+function yesterdayStr(){
+  if(MODE==='online'){const d=new Date(dateStr+"T12:00:00Z");d.setUTCDate(d.getUTCDate()-1);return d.toISOString().slice(0,10);}
+  const d=new Date();d.setDate(d.getDate()-1);return localDateStr(d);
+}
+function bumpStreak(){
+  const s=loadStreak();
+  if(s.last===dateStr) return s;
+  s.count = (s.last===yesterdayStr()) ? s.count+1 : 1;
+  s.last=dateStr; lsSet(SKEY,s); return s;
+}
+function renderStreakChip(){
+  const s=loadStreak();
+  document.getElementById('streakChip').textContent = s.count>0 ? ("🔥 "+s.count) : "";
+}
+function toggleSettings(){const p=document.getElementById('settingsPanel');p.hidden=!p.hidden;}
+function resetProfile(){
+  if(!confirm("Erase your bias profile, streak and today's play on this device? This can't be undone.")) return;
+  try{localStorage.removeItem(PKEY);localStorage.removeItem(SKEY);localStorage.removeItem('normish_play_'+dateStr);}catch(e){}
+  profile=loadProfile(); renderStreakChip();
+  document.getElementById('playBtn').textContent="Play today's room";
+  document.getElementById('playBtn').onclick=startGame;
+  show('s-intro');
+}
+
+// ================= flow =================
+let cur=0, conf='steady', touched=false, practiceMode=false, savedDaily=null;
+const results=[];
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');window.scrollTo(0,0);}
+document.getElementById('regionSel').addEventListener('change',updateLocale);
+function updateLocale(){
+  const us=document.getElementById('regionSel').value==='us';
+  document.getElementById('localeNote').textContent = us
+    ? "benchmarks match your region"
+    : "benchmarks are US survey data — a rough guide until the live room takes over";
+}
+updateLocale();
+
+function renderProgress(el){const w=document.getElementById(el);w.innerHTML="";
+  for(let i=0;i<5;i++){const p=document.createElement('div');p.className='pip'+(i===0?' head':'')+(i<cur?' done':i===cur?' now':'');w.appendChild(p);}}
+function roundLabel(i){return practiceMode ? (i===0?"Practice Room":"Practice read "+i+" of 4") : (i===0?"Today's Room":"Bonus read "+i+" of 4");}
+function startGame(){practiceMode=false;cur=0;results.length=0;loadQuestion();}
+
+function onSlide(v){
+  const e=todaysQs[cur];
+  const el=document.getElementById('bigPct');
+  el.classList.remove('untouched');
+  el.textContent = e.type==='gap' ? (v+" pts") : (v+"%");
+  document.getElementById('pctSlider').setAttribute('aria-valuetext', el.textContent);
+  if(!touched){
+    touched=true;
+    const b=document.getElementById('lockBtn');
+    b.disabled=false; b.textContent="Lock it in";
+  }
+}
+function pickConf(c){conf=c;document.querySelectorAll('#confRow button').forEach(b=>b.classList.toggle('on',b.dataset.c===c));}
+
+function loadQuestion(){
+  renderProgress('progress');
+  conf='steady'; pickConf('steady'); touched=false;
+  const e=todaysQs[cur], key=resolveKey(e);
+  setConfSubs(e.type==='gap');
+  const card=document.getElementById('qCard');
+  card.className='card'+(cur===0?' headline':'');
+  const tag=document.getElementById('roundTag');
+  tag.textContent=roundLabel(cur); tag.className='round-tag'+(cur===0?' main':'');
+  const kt=document.getElementById('keySrcTag');
+  if(key.mode==='gap'){kt.className='keysource gap';kt.textContent="Group-gap read · scored against a published demographic split";}
+  else if(key.mode==='live'){kt.className='keysource live';kt.textContent="Scored against the live room ("+key.liveN.toLocaleString()+" players)";}
+  else{kt.className='keysource bench';kt.textContent="Scored against a public survey until "+CFG.CUTOFF+" answer ("+(key.liveN||0)+" so far)";}
+  document.getElementById('qText').textContent=e.q;
+
+  const yn=document.getElementById('ynButtons');
+  const pl=document.getElementById('phaseLabel');
+  const hn=document.getElementById('honestyNote');
+  if(e.type==='gap'){
+    pl.textContent="Step 1 · Which group is higher?"; pl.className="phase-label you-phase";
+    yn.style.display='flex';
+    yn.innerHTML='<button onclick="answerGap(1)">'+e.groupHi+'</button><button onclick="answerGap(0)">'+e.groupLo+'</button>';
+    hn.textContent="";
+  }else{
+    pl.textContent="Step 1 · Your honest answer"; pl.className="phase-label you-phase";
+    yn.style.display='flex';
+    yn.innerHTML='<button onclick="answerSelf(true)">Yes</button><button onclick="answerSelf(false)">No</button>';
+    hn.textContent="Private. Never shown to anyone — it only feeds the anonymous count.";
+  }
+  document.getElementById('predictBlock').style.display='none';
+  const sl=document.getElementById('pctSlider');
+  const bp=document.getElementById('bigPct');
+  bp.textContent="slide to guess"; bp.classList.add('untouched');
+  const lb=document.getElementById('lockBtn');
+  lb.disabled=true; lb.textContent="Slide to guess first";
+  if(e.type==='gap'){sl.min=0;sl.max=40;sl.value=20;}
+  else{sl.min=1;sl.max=99;sl.value=50;}
+  show('s-question');
+}
+function toPredict(){
+  const e=todaysQs[cur];
+  document.getElementById('phaseLabel').textContent="Step 2 · Now read the room";
+  document.getElementById('phaseLabel').className="phase-label crowd-phase";
+  document.getElementById('predictSub').innerHTML = e.type==='gap'
+    ? "how big is the gap, in points?"
+    : "what percent said <b>yes</b>?";
+  document.getElementById('ynButtons').style.display='none';
+  document.getElementById('honestyNote').textContent="";
+  document.getElementById('predictBlock').style.display='block';
+  haptic('light');
+}
+function answerSelf(yes){results[cur]={type:'yesno',selfYes:yes};toPredict();}
+function answerGap(higherPicked){results[cur]={type:'gap',dirRight:!!higherPicked};toPredict();}
+
+function postAnswer(e, r){
+  if(practiceMode) return;          // practice never touches the live answer key
+  if(MODE!=='online') return;
+  const body={date:dateStr, qid:e.id, device:deviceId(), conf:r.conf, guess:r.guess};
+  if(e.type==='yesno') body.self = r.selfYes?1:0; else body.dir = r.dirRight?1:0;
+  try{
+    fetch(apiBase+'/api/answer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),keepalive:true}).catch(()=>{});
+  }catch(err){}
+}
+
+function lockPrediction(){
+  if(!touched) return;
+  const e=todaysQs[cur], key=resolveKey(e);
+  const guess=parseInt(document.getElementById('pctSlider').value,10);
+  const err=Math.abs(guess-key.truth);
+  const isGap=e.type==='gap';
+  const pts=scoreTier(err,conf,isGap);
+  Object.assign(results[cur],{guess,truth:key.truth,err,en:normErr(err,isGap),conf,pts,emo:emojiFor(normErr(err,isGap)),mode:key.mode,cite:key.cite});
+  postAnswer(e,results[cur]);
+  renderReveal(guess,key,e,err,pts);
+}
+
+function renderReveal(guess,key,e,err,pts){
+  renderProgress('progress2');
+  const t2=document.getElementById('roundTag2');
+  t2.textContent=roundLabel(cur); t2.className='round-tag'+(cur===0?' main':'');
+  document.getElementById('rqText').textContent=e.q;
+  const isGap=e.type==='gap', en=normErr(err,isGap);
+  const scale = isGap ? 40 : 100;
+  const pos=v=>Math.max(0,Math.min(100,(v/scale)*100));
+  const you=document.getElementById('youMarker'), bench=document.getElementById('benchMarker'),
+        keyM=document.getElementById('keyMarker'), band=document.getElementById('bandVis');
+  you.style.left=pos(guess)+"%";
+  document.getElementById('youFlag').textContent="You: "+guess+(isGap?"":"%");
+  const w=isGap?CONF[conf].gw:CONF[conf].w;
+  const lo=Math.max(0,guess-w), hi=Math.min(scale,guess+w);
+  band.style.left=pos(lo)+"%"; band.style.width=(pos(hi)-pos(lo))+"%"; band.classList.remove('show');
+  const showBench=(key.mode==='live');
+  if(showBench){bench.style.left=pos(e.benchYes)+"%";document.getElementById('benchFlag').textContent="Survey: "+e.benchYes+"%";bench.style.display='block';}
+  else bench.style.display='none';
+  bench.classList.remove('show');
+  keyM.style.transition='none'; keyM.style.left="50%";
+  const keyName = key.mode==='live'?"Room: ":(key.mode==='gap'?"Gap: ":"Survey: ");
+  document.getElementById('keyFlag').textContent=keyName+key.truth+(isGap?"":"%");
+
+  const firstEver = profile.sessions===0;
+  const coldLine = firstEver
+    ? "Way off — that's the false-consensus effect working on you."
+    : "That's not the room. That's you.";
+  document.getElementById('verdict').innerHTML='<span class="emo">'+emojiFor(en)+'</span> '+
+    (en<=3?"Dead on.":en<=8?"You read this room.":en<=18?"Warm-ish.":coldLine);
+  const noun = key.mode==='live'?"the room":(key.mode==='gap'?"the real gap":"the survey");
+  document.getElementById('verdictSub').textContent =
+    key.truth+(isGap?" points":"%")+" is "+noun+". You said "+guess+(isGap?" points.":"%.");
+  document.getElementById('benchCite').textContent="Source: "+key.cite;
+
+  const rl=document.getElementById('rarityLine');
+  if(!isGap){
+    const selfYes=results[cur].selfYes, side=selfYes?key.truth:100-key.truth;
+    rl.textContent = side<=35 ? "Rare read — about "+side+"% share your answer."
+                  : side>=65 ? "Common ground — about "+side+"% share your answer."
+                  : "A split — about "+side+"% land where you did.";
+  } else {
+    rl.textContent = results[cur].dirRight ? "You called the higher group right." : "The higher group was the other one.";
+  }
+  // staggered reveal: markers → verdict → points count-up
+  ['verdict','verdictSub','benchCite','rarityLine'].forEach(id=>document.getElementById(id).classList.remove('show'));
+  const ptsEl=document.getElementById('ptsLine');
+  ptsEl.innerHTML="&nbsp;";
+  document.getElementById('nextBtn').textContent=cur===4?(practiceMode?"See practice result":"See Today's Read"):"Next read";
+  show('s-reveal');
+  const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const cn=CONF[conf].name, cw=(isGap?CONF[conf].gw:CONF[conf].w);
+  const showPts=()=>{ptsEl.innerHTML="+"+pts+" pts <span class='mult'>("+cn+" ±"+cw+")</span>";};
+  const showText=()=>{['verdict','verdictSub','benchCite','rarityLine'].forEach(id=>document.getElementById(id).classList.add('show'));};
+  // safety net: if rAF is suspended (backgrounded webview), force the reveal statically
+  setTimeout(()=>{ if(!document.getElementById('verdict').classList.contains('show')){
+    keyM.style.transition='none'; keyM.style.left=pos(key.truth)+"%";
+    band.classList.add('show'); if(showBench) bench.classList.add('show');
+    showText(); showPts();
+  }},1800);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    keyM.style.transition=''; keyM.style.left=pos(key.truth)+"%";
+    band.classList.add('show');
+    if(showBench) bench.classList.add('show');
+    if(reduced){showText();showPts();haptic('medium');return;}
+    setTimeout(()=>{haptic('medium');showText();},1050);
+    let shown=0;
+    setTimeout(()=>{
+      if(pts===0){showPts();return;}
+      const step=Math.max(1,Math.round(pts/12));
+      const iv=setInterval(()=>{
+        shown=Math.min(pts,shown+step);
+        ptsEl.innerHTML="+"+shown+" pts <span class='mult'>("+cn+" ±"+cw+")</span>";
+        if(shown>=pts) clearInterval(iv);
+      },40);
+    },1350);
+  }));
+}
+function nextQuestion(){cur++; if(cur<5) loadQuestion(); else if(practiceMode) renderPracticeSummary(); else renderSummary();}
+
+// ================= Normish Plus features =================
+function openPlus(){ if(isPlus){ renderPlusHub(); show('s-plus'); } else { document.getElementById('pwNote').textContent=""; renderPwYours(); show('s-paywall'); } }
+// endowed progress: remind the buyer what they already own before the price
+function renderPwYours(){
+  const el=document.getElementById('pwYours'); if(!el) return;
+  const reads=(profile.n||0)+(profile.gapN||0), days=loadHistory().length;
+  if(reads>0){
+    el.hidden=false;
+    el.innerHTML="You've already logged <b>"+reads+" read"+(reads===1?"":"s")+"</b>"+
+      (days>1?" across <b>"+days+" days</b>":"")+" — Plus keeps every one of them.";
+  } else { el.hidden=true; }
+}
+function pickPracticeQs(){
+  const yes=[],gaps=[]; BANK.forEach((e,i)=>{(e.type==='gap'?gaps:yes).push(i);});
+  const shuffle=a=>{const x=a.slice();for(let i=x.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));const t=x[i];x[i]=x[j];x[j]=t;}return x;};
+  const y=shuffle(yes).slice(0,4), g=shuffle(gaps).slice(0,1);
+  const order=[y[0]]; let yi=1; const gp=1+Math.floor(Math.random()*4);
+  for(let p=1;p<5;p++) order.push(p===gp?g[0]:y[yi++]);
+  return order.map(i=>BANK[i]);
+}
+function startPractice(){
+  if(!isPlus){ document.getElementById('pwNote').textContent=""; renderPwYours(); show('s-paywall'); return; }
+  practiceMode=true; savedDaily=todaysQs; todaysQs=pickPracticeQs();
+  cur=0; results.length=0; loadQuestion();
+}
+function renderPracticeSummary(){
+  const total=results.reduce((a,r)=>a+r.pts,0);
+  practiceMode=false; if(savedDaily) todaysQs=savedDaily;
+  renderPlusHub(total, results.map(r=>r.emo).join(" "));
+  show('s-plus'); haptic('success');
+}
+function renderPlusHub(practiceTotal, practiceEmojis){
+  const hub=document.getElementById('practiceSub');
+  hub.innerHTML = (practiceTotal!=null)
+    ? "Last practice: <b>"+practiceTotal+"/750</b> "+practiceEmojis+" · practice never affects your daily streak or the answer key."
+    : "Unlimited extra rooms. Practice never affects your daily streak or the answer key.";
+  // deep stats
+  const p=profile;
+  const stats=document.getElementById('plusStats');
+  if(p.n<1 && p.gapN<1){ stats.innerHTML="<h4>Your stats</h4>Play a few rooms and your calibration breakdown appears here."; }
+  else{
+    const ynAvg = p.n? (p.sumSigned/p.n) : 0;
+    const gapAvg = p.gapN? (p.gapSumSigned/p.gapN) : 0;
+    const lean=v=>Math.abs(v)<1.5?"well-calibrated":(v>0?"over by "+v.toFixed(1):"under by "+Math.abs(v).toFixed(1));
+    stats.innerHTML="<h4>Your calibration</h4>"+
+      "<div>Yes/no reads (<b>"+p.n+"</b>): "+(p.n?lean(ynAvg):"—")+" pts</div>"+
+      "<div>Group-gap reads (<b>"+p.gapN+"</b>): "+(p.gapN?lean(gapAvg):"—")+" pts</div>"+
+      "<div style='margin-top:8px;color:var(--ink-soft)'>Lifetime points: <b>"+(p.totalPts||0).toLocaleString()+"</b> across <b>"+(p.sessions||0)+"</b> days.</div>";
+  }
+  // history + trend
+  const h=loadHistory(); const hist=document.getElementById('plusHistory');
+  if(!h.length){ hist.innerHTML="<h4>History</h4>Your past daily scores will build up here."; }
+  else{
+    const recent=h.slice(-30);
+    const max=Math.max(750,...recent.map(x=>x.total));
+    const bars=recent.map(x=>'<div class="bar" style="height:'+Math.max(4,Math.round(x.total/max*44))+'px" title="#'+(x.day||'')+': '+x.total+'"></div>').join("");
+    const rows=h.slice(-8).reverse().map(x=>'<div class="hist-row"><span class="hd">#'+(x.day||'')+'</span><span class="he">'+(x.emojis||'')+'</span><span class="hs">'+x.total+'</span></div>').join("");
+    hist.innerHTML="<h4>History &amp; trend</h4><div class='trend'>"+bars+"</div>"+rows+
+      "<div style='margin-top:8px;color:var(--ink-soft);font-size:.78rem'>"+h.length+" day"+(h.length===1?"":"s")+" logged on this device.</div>";
+  }
+}
+function renderSummaryPlusCTA(){
+  const el=document.getElementById('summaryPlusCta'); if(!el) return;
+  el.innerHTML = isPlus
+    ? '<button onclick="openPlus()">✦ Keep playing — practice rooms &amp; your history</button>'
+    : '<button onclick="openPlus()">✦ Get Normish Plus — practice rooms, full history, deep stats</button>';
+}
+function refreshPlusUI(){
+  renderSummaryPlusCTA();
+  const introCta=document.getElementById('introPlusCta');
+  if(introCta) introCta.innerHTML = isPlus
+    ? '<button onclick="openPlus()">✦ Normish Plus — practice &amp; history</button>'
+    : '<button onclick="openPlus()">✦ Try Normish Plus</button>';
+  if(document.getElementById('s-plus').classList.contains('active') && isPlus) renderPlusHub();
+}
+
+// ================= summary + profile =================
+function estPercentile(total){const z=(total-390)/110;const p=0.5*(1+erf(z/Math.SQRT2));return Math.min(99,Math.max(1,Math.round(p*100)));}
+function erf(x){const s=x<0?-1:1;x=Math.abs(x);const t=1/(1+0.3275911*x);const y=1-((((1.061405429*t-1.453152027)*t+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x);return s*y;}
+
+function renderProfile(){
+  const p=profile;
+  if(p.n<3) return "<b>Your bias profile</b><br>Building — play a few more reads and this starts telling you your blind spot. So far: "+p.n+" yes/no reads logged on this device.";
+  const avg=p.sumSigned/p.n;
+  const dir=avg>1.5?"overestimate":avg<-1.5?"underestimate":"read closely";
+  const mag=Math.abs(avg);
+  const fillW=Math.min(50,mag*2.5);
+  const left=avg>=0?50:50-fillW;
+  let line;
+  if(dir==="read closely") line="Across <b>"+p.n+"</b> reads you're well-calibrated on average — no consistent lean.";
+  else line="Across <b>"+p.n+"</b> reads you <b>"+dir+"</b> how much people agree with you by about <b>"+mag.toFixed(1)+" points</b> on average. That's the false-consensus pull, measured on your own play.";
+  const meter='<div class="meter"><div class="mid"></div><div class="fill" style="left:'+left+'%;width:'+fillW+'%"></div></div>'+
+    '<div class="meter-caps"><span>underestimate</span><span>calibrated</span><span>overestimate</span></div>';
+  return "<b>Your bias profile</b><br>"+line+meter;
+}
+
+let shareText="", countdownIv=null;
+function nextRoomMs(){
+  const now=new Date();
+  if(MODE==='online'){
+    const next=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()+1));
+    return next-now;
+  }
+  const next=new Date(now.getFullYear(),now.getMonth(),now.getDate()+1);
+  return next-now;
+}
+function startCountdown(){
+  const el=document.getElementById('countdown');
+  if(countdownIv) clearInterval(countdownIv);
+  const tick=()=>{
+    let ms=nextRoomMs(); if(ms<0)ms=0;
+    const h=Math.floor(ms/3600000), m=Math.floor(ms/60000)%60, s=Math.floor(ms/1000)%60;
+    const p=n=>String(n).padStart(2,'0');
+    el.textContent=p(h)+":"+p(m)+":"+p(s);
+  };
+  tick(); countdownIv=setInterval(tick,1000);
+}
+
+function buildShareText(head,total,pctText){
+  let t="Normish #"+dayNum+
+    "\n\""+todaysQs[0].q+"\""+
+    "\nGuess before you look: what % said yes?"+
+    "\n—"+
+    "\nMy miss: "+head.err+" ("+(head.mode==='live'?"vs the room":"vs a real survey")+")"+
+    "\n"+results.map(r=>r.emo).join("")+" "+total+"/750 · "+pctText;
+  if(CFG.SHARE_URL) t+="\n"+CFG.SHARE_URL;
+  return t;
+}
+
+async function renderSummary(){
+  const total=results.reduce((a,r)=>a+r.pts,0);
+  for(const r of results){
+    if(r.type==='yesno'){profile.sumSigned+=(r.guess-r.truth);profile.n++;}
+    else{profile.gapSumSigned+=(r.guess-r.truth);profile.gapN++;}
+  }
+  const prevBest = profile.best||0;
+  const isNewBest = profile.sessions>0 && total>prevBest;   // no fanfare on the very first game
+  profile.best = Math.max(prevBest, total);
+  profile.totalPts+=total; profile.sessions++;
+  saveProfile();
+  const streak=bumpStreak(); renderStreakChip(); renderStreakRisk();
+
+  let pctMain, pctNote, pctShort;
+  if(MODE==='online'){
+    try{
+      const f=await fetchJSON('/api/finish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({date:dateStr,device:deviceId(),score:total})});
+      if(f && f.ok && f.n>=10){
+        pctMain="Closer than "+f.percentile+"% of today's players";
+        pctNote="based on the "+f.n.toLocaleString()+" players who've finished so far today";
+        pctShort="closer than "+f.percentile+"% of players";
+      }else if(f && f.ok){
+        pctMain="Score logged — you're player #"+f.n+" today";
+        pctNote="percentiles unlock once today's room fills up";
+        pctShort=total+"/750 today";
+      }else{throw new Error('bad');}
+    }catch(e){
+      const p=estPercentile(total);
+      pctMain="Closer than ~"+p+"% of players";
+      pctNote="estimated — couldn't reach the room just now";
+      pctShort="closer than ~"+p+"% of players (est.)";
+    }
+  }else{
+    const p=estPercentile(total);
+    pctMain="Closer than ~"+p+"% of players";
+    pctNote="estimated from typical score spreads — you're playing offline";
+    pctShort="closer than ~"+p+"% of players (est.)";
+  }
+
+  document.getElementById('finalScore').textContent=total;
+  document.getElementById('bestLine').textContent = isNewBest
+    ? ("🏆 New personal best — you beat your old "+prevBest)
+    : (prevBest>0 && prevBest>total ? ("Your best: "+prevBest) : "");
+  document.getElementById('streakLine').textContent = streak.count>1 ? ("🔥 "+streak.count+"-day streak") : "🔥 Streak started — come back tomorrow to keep it";
+  document.getElementById('emojiRow').textContent=results.map(r=>r.emo).join(" ");
+  document.getElementById('pctileLine').textContent=pctMain;
+  document.getElementById('pctileNote').textContent=pctNote;
+  document.getElementById('profileBox').innerHTML=renderProfile();
+
+  const sharpMisses=results.filter(r=>r.conf==='sharp'&&r.en>10).length;
+  const hedgeWastes=results.filter(r=>r.conf==='hedge'&&r.en<=5).length;
+  let ins;
+  if(sharpMisses>=2) ins="<b>Overconfident today:</b> you went Sharp and missed on "+sharpMisses+" reads. Sharp only pays when you're nearly exact — save it for the ones you truly know.";
+  else if(hedgeWastes>=2) ins="<b>Too cautious:</b> you Hedged "+hedgeWastes+" reads you actually nailed. You left points on the table — trust a Sharp call when you feel it.";
+  else ins="<b>Well-sized confidence:</b> your risk tiers roughly matched your accuracy today. That calibration is the hard half of the game.";
+  document.getElementById('insightBox').innerHTML=ins;
+
+  shareText=buildShareText(results[0],total,pctShort);
+  document.getElementById('sharePreview').textContent=shareText;
+  savePlayed({total, emojis:results.map(r=>r.emo).join(" "), pctMain, pctNote, insight:ins, shareText, streak:streak.count});
+  pushHistory({date:dateStr, day:dayNum, total, emojis:results.map(r=>r.emo).join(" ")});
+  haptic('success');
+  renderSummaryPlusCTA();
+  startCountdown();
+  show('s-summary');
+}
+
+function renderSummaryFromCache(c){
+  document.getElementById('finalScore').textContent=c.total;
+  document.getElementById('bestLine').textContent = (profile.best||0)>c.total ? ("Your best: "+profile.best) : "";
+  document.getElementById('streakLine').textContent = c.streak>1 ? ("🔥 "+c.streak+"-day streak") : "🔥 Streak alive — come back tomorrow";
+  document.getElementById('emojiRow').textContent=c.emojis;
+  document.getElementById('pctileLine').textContent=c.pctMain;
+  document.getElementById('pctileNote').textContent=c.pctNote;
+  document.getElementById('profileBox').innerHTML=renderProfile();
+  document.getElementById('insightBox').innerHTML=c.insight;
+  shareText=c.shareText;
+  document.getElementById('sharePreview').textContent=shareText;
+  renderSummaryPlusCTA();
+  startCountdown();
+  show('s-summary');
+}
+
+function shareChallenge(){
+  if(nativeShare(shareText)) return;
+  if(navigator.share){navigator.share({text:shareText}).catch(()=>{});return;}
+  copyShare();
+}
+function copyShare(){const done=()=>{document.getElementById('copiedMsg').textContent="Copied — paste it anywhere.";};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(shareText).then(done).catch(()=>fb(done));}else fb(done);}
+function fb(done){const ta=document.createElement('textarea');ta.value=shareText;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');}catch(e){}document.body.removeChild(ta);done();}
+
+boot();
+</script>
+</body>
+</html>
